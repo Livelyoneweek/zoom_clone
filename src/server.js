@@ -16,6 +16,19 @@ const handleListen = () => console.log(`Listening on http://localhost:3000`);
 const server = http.createServer(app);
 const wss = new WebSocket.Server({server});
 
+const sockets =[];
+
+wss.on("connection", (socket) => {
+    sockets.push(socket);
+    console.log("Connected to Browser ✅");
+    socket.on("close", () => console.log("Disconnected from the Browser ❌"));
+    socket.on("message", (message) => {
+        const messageString = message.toString('utf8');
+        sockets.forEach(aSocket => aSocket.send(messageString));
+    });
+  });
+
+
 // server는 꼭 써야되는거아님, websocket 서버만 쓰려면 wss 사용해도 될듯함
 server.listen(3000,handleListen);
 
