@@ -16,6 +16,8 @@ let roomName;
 /** @type {RTCPeerConnection} */
 let myPeerConnection;
 
+let myDataChannel;
+
 async function getCameras() {
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -125,6 +127,11 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 
 // Socket Code
 socket.on("welcome", async () => {
+  //data 채널 생성
+  myDataChannel = myPeerConnection.createDataChannel("chat");
+  myDataChannel.addEventListener("message", (event) => console.log(event.data));
+  console.log("made data channel");
+
   const offer = await myPeerConnection.createOffer();
   console.log("my offer:"+offer);
   myPeerConnection.setLocalDescription(offer);
@@ -133,12 +140,23 @@ socket.on("welcome", async () => {
   console.log("sent the answer");
 });
 
+//  myDataChannel.send("hello") 자바스크립트 명령으로 이제 데이터채널을통해 서로 채팅가능
+
 socket.on("offer", async (offer) => {
+  //data 채널 리슨
+  myPeerConnection.addEventListener("datachannel", (event) => {
+    myDataChannel = event.channel;
+    myDataChannel.addEventListener("message", (event) =>
+      console.log(event.data)
+    );
+  });
+
   console.log("received the offer");
   myPeerConnection.setRemoteDescription(offer);
   const answer = await myPeerConnection.createAnswer();
   myPeerConnection.setLocalDescription(answer);
   socket.emit("answer", answer, roomName);
+  console.log("sent the answer");
 });
 
 socket.on("answer", (answer) => {
@@ -167,11 +185,10 @@ function makeConnection() {
     ],
   });
   myPeerConnection.addEventListener("icecandidate", handleIce);
-  myPeerConnection.addEventListener("addstream", handleAddStream);
+  // myPeerConnection.addEventListener("addstream", handleAddStream);
+  myPeerConnection.addEventListener("track", handleTrack)
   console.log("myPeerConnection:"+myPeerConnection);
-  myStream
-    .getTracks()
-    .forEach((track) => myPeerConnection.addTrack(track, myStream));
+  myStream.getTracks().forEach((track) => myPeerConnection.addTrack(track, myStream));
 }
 
 function handleIce(data) {
@@ -184,4 +201,9 @@ function handleAddStream(data) {
   peerFace.srcObject = data.stream;
 }
 
-
+// handleAddStream 안되서 추가
+function handleTrack(data) {
+  console.log("handle track")
+  const peerFace = document.querySelector("#peerFace")
+  peerFace.srcObject = data.streams[0]
+  }
